@@ -4,13 +4,15 @@ import sys
 
 from Crypto.Hash import MD4, MD5, SHA1, SHA256, SHA512
 
+
+#Здесь проще получить один раз функцию и после вычислять её
 def get_hash(hash_algo_name, data):
     algo_mapping = {
-        'md4' : MD4,
-        'md5' : MD5,
-        'sha1' : SHA1,
-        'sha256' : SHA256,
-        'sha512' : SHA512
+        'md4': MD4,
+        'md5': MD5,
+        'sha1': SHA1,
+        'sha256': SHA256,
+        'sha512': SHA512
     }
 
     algo = algo_mapping.get(hash_algo_name)
@@ -21,9 +23,11 @@ def get_hash(hash_algo_name, data):
     else:
         return algo.new(data).hexdigest()
 
+
 def generate_random_string(length):
     characters = string.ascii_letters + string.digits
     return ''.join(secrets.choice(characters) for _ in range(length))
+
 
 def get_passwords_from_file(filename, encoding):
     result = []
@@ -38,6 +42,7 @@ def get_passwords_from_file(filename, encoding):
 
     return result
 
+
 def get_hashes_from_passwords(passwords, hash_count, hash_algo):
     result = []
     counter = 0
@@ -50,12 +55,14 @@ def get_hashes_from_passwords(passwords, hash_count, hash_algo):
 
     return '\n'.join(result)
 
+
 def write_hashes(filename, encoding, hashes):
     try:
         with open(filename, "w", encoding=encoding) as file:
-           file.write(hashes)
+            file.write(hashes)
     except Exception as e:
         print(f"Error: {e}")
+
 
 def main():
     args = sys.argv
@@ -73,6 +80,7 @@ def main():
     hashes = get_hashes_from_passwords(passwords, hash_count, hash_algo)
     write_hashes(output_file, encoding, hashes)
     return 0
+
 
 if __name__ == "__main__":
     main()
