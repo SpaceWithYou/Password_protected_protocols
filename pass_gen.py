@@ -66,15 +66,15 @@ def write_hashes(filename, encoding, hashes):
 
 def main():
     args = sys.argv
-    if len(args) != 8:
+    if len(args) != 6:
         print("Error")
         return -1
 
-    input_file = args[3]
-    encoding = args[4]
-    hash_algo = args[5]
-    hash_count = int(args[6])
-    output_file = args[7]
+    input_file = args[1]
+    encoding = args[2]
+    hash_algo = args[3]
+    hash_count = int(args[4])
+    output_file = args[5]
 
     passwords = get_passwords_from_file(input_file, encoding)
     hashes = get_hashes_from_passwords(passwords, hash_count, hash_algo)
