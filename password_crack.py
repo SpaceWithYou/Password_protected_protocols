@@ -67,7 +67,7 @@ def main():
     data = get_data_from_file(words, encoding)
     hashlist = get_data_from_file(hashes, encoding)
 
-    num_processes = multiprocessing.cpu_count() // 12
+    num_processes = multiprocessing.cpu_count()
     chunks = [data[i::num_processes] for i in range(num_processes)]
     result = multiprocessing.Queue()
 
