@@ -1,5 +1,5 @@
 import multiprocessing
-import queue
+from multiprocessing import Pool
 import sys
 import time
 
@@ -14,14 +14,7 @@ def get_hash_function(hash_algo_name):
         'sha256': SHA256,
         'sha512': SHA512
     }
-
-    algo = algo_mapping.get(hash_algo_name)
-
-    if algo is None:
-        print(f"Algorithm '{hash_algo_name}' is not supported.")
-        return None
-    else:
-        return algo
+    return algo_mapping.get(hash_algo_name)
 
 
 def get_hash(hash_function, data):
@@ -29,81 +22,74 @@ def get_hash(hash_function, data):
 
 
 def get_data_from_file(filename, encoding):
-    result = []
-    #На одной строке - один хеш/пароль
     try:
         with open(filename, mode="r", encoding=encoding) as file:
-            lines = file.read().split("\n")
-        for line in lines:
-            result.append(line.encode(encoding))
+            return [line.strip().encode(encoding) for line in file if line.strip()]
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error reading file '{filename}': {e}")
+        return []
 
-    return result
 
-
-def check_chunk_data(chunk, hashes, result, hash_algo):
+def check_chunk_data(chunk, hashes, hash_algo):
     function = get_hash_function(hash_algo)
     if function is None:
-        return -1
+        return []
 
+    local_results = []
     for password in chunk:
         password_hash = get_hash(function, password)
-        for hash_from_list in hashes:
-            if password_hash.encode() == hash_from_list:
-                result.put((password, hash_from_list))
-                break
+        if password_hash.encode() in hashes:
+            local_results.append((password.decode(), password_hash))
+    return local_results
+
+
+def split_list(data, num_chunks):
+    return [data[i::num_chunks] for i in range(num_chunks)]
 
 
 def main():
     args = sys.argv
     if len(args) != 5:
-        print("Error")
+        print("Usage: script.py <words_file> <encoding> <hash_algo> <hashes_file>")
         return -1
 
-    words = args[1]
+    words_file = args[1]
     encoding = args[2]
     hash_algo = args[3]
-    hashes = args[4]
+    hashes_file = args[4]
 
-    data = get_data_from_file(words, encoding)
-    hashlist = get_data_from_file(hashes, encoding)
+    data = get_data_from_file(words_file, encoding)
+    hashlist = set(get_data_from_file(hashes_file, encoding))
 
-    # Вариант без мультипроцессинга
-    result_single_thread = queue.Queue()
+    if not data or not hashlist:
+        print("Error: Input files are empty or invalid.")
+        return -1
 
+    # Single-threaded
     start_time = time.time()
-    check_chunk_data(data, hashlist, result_single_thread, hash_algo)
+    result_single_thread = check_chunk_data(data, hashlist, hash_algo)
     end_time = time.time()
 
-    print(f"elapsed time in single thread mode {end_time - start_time}")
-    while not result_single_thread.empty():
-        password, matched = result_single_thread.get()
-        print(f"{password.decode(encoding)}:{matched}")
+    print(f"Elapsed time in single-thread mode: {end_time - start_time:.4f} seconds")
+    for password, matched_hash in result_single_thread:
+        print(f"{password}:{matched_hash}")
 
-    num_processes = multiprocessing.cpu_count()
-    chunks = [data[i::num_processes] for i in range(num_processes)]
-    result = multiprocessing.Queue()
+    num_cores = multiprocessing.cpu_count() // 2
+    chunks = split_list(data, num_cores)
 
-    # Параллельный вариант
-    processes = []
     start_time = time.time()
-    for chunk in chunks:
-        #Проверяем пароли
-        p = multiprocessing.Process(target=check_chunk_data, args=(chunk, hashlist, result, hash_algo))
-        processes.append(p)
-        p.start()
+    with Pool(processes=num_cores) as pool:
+        results = pool.starmap(check_chunk_data, [(chunk, hashlist, hash_algo) for chunk in chunks])
 
-    for p in processes:
-        p.join()
+    matched = [item for sublist in results for item in sublist]
     end_time = time.time()
 
     print('----------------------------------')
-    print(f"elapsed time in multi thread mode {end_time - start_time}")
-    while not result.empty():
-        password, matched = result.get()
-        print(f"{password.decode(encoding)}:{matched}")
+    print(f"Elapsed time in multi-thread mode: {end_time - start_time:.4f} seconds")
+    for password, matched_hash in matched:
+        print(f"{password}:{matched_hash}")
 
+    print(len(matched))
     return 0
 
 
