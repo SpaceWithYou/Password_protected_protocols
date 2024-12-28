@@ -46,6 +46,7 @@ def get_passwords_from_file(filename, encoding):
 def get_hashes_from_passwords(passwords, hash_count, hash_algo):
     result = []
     counter = 0
+
     for password in passwords:
         if counter < hash_count:
             counter += 1
@@ -66,9 +67,13 @@ def write_hashes(filename, encoding, hashes):
 
 def main():
     args = sys.argv
-    if len(args) != 6:
-        print("Error")
-        return -1
+    if len(args) == 0:
+        print("Usage\npython pass_gen.py <input_file> <encoding> <hash_name> <count> <output_file>")
+        print("")
+    else:
+        if len(args) != 6:
+            print("Error")
+            return -1
 
     input_file = args[1]
     encoding = args[2]
