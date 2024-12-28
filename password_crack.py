@@ -1,5 +1,7 @@
 import multiprocessing
+import queue
 import sys
+import time
 
 from Crypto.Hash import MD4, MD5, SHA1, SHA256, SHA512
 
@@ -67,11 +69,25 @@ def main():
     data = get_data_from_file(words, encoding)
     hashlist = get_data_from_file(hashes, encoding)
 
+    # Вариант без мультипроцессинга
+    result_single_thread = queue.Queue()
+
+    start_time = time.time()
+    check_chunk_data(data, hashlist, result_single_thread, hash_algo)
+    end_time = time.time()
+
+    print(f"elapsed time in single thread mode {end_time - start_time}")
+    while not result_single_thread.empty():
+        password, matched = result_single_thread.get()
+        print(f"{password.decode(encoding)}:{matched}")
+
     num_processes = multiprocessing.cpu_count()
     chunks = [data[i::num_processes] for i in range(num_processes)]
     result = multiprocessing.Queue()
 
+    # Параллельный вариант
     processes = []
+    start_time = time.time()
     for chunk in chunks:
         #Проверяем пароли
         p = multiprocessing.Process(target=check_chunk_data, args=(chunk, hashlist, result, hash_algo))
@@ -80,7 +96,10 @@ def main():
 
     for p in processes:
         p.join()
+    end_time = time.time()
 
+    print('----------------------------------')
+    print(f"elapsed time in multi thread mode {end_time - start_time}")
     while not result.empty():
         password, matched = result.get()
         print(f"{password.decode(encoding)}:{matched}")
